@@ -1,0 +1,8 @@
+*/log/*
+*/logs/*
+*.log
+/var/tmp/
+/var/sog/data/cache
+/tmp
+/dev
+
