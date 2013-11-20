@@ -5,4 +5,9 @@
 /var/sog/data/cache
 /tmp
 /dev
+/var/sog/backups
+/opt/app/oracle
+/proc
+/sys
+/lost+found
 
