@@ -6,12 +6,31 @@ from scapy.utils import rdpcap
 global pkts, index
 index=1
 
+def tcp_syn_handle(pkt): 
+    eth=Ether(src=pkt[Ether].dst, dst=pkt[Ether].src)
+    ip=IP(dst=pkt[IP].src, src=pkt[IP].dst)
+    tcp=TCP(sport=pkt[TCP].dport, dport=pkt[TCP].sport, flags="SA", options=pkt[TCP].options)
+    tcp.ack = pkt[TCP].seq + 1
+    tcp.seq = 0
+    s=eth/ip/tcp
+    s.show()   
+    ack=sr1(s)
+    ack.show
+
 def monitor_callback(pkt):
      global index, pkts
      print """receive ____________________________________"""
      pkt.show()
 
-     print """send ____________________________________"""
+     print """____________________________________"""
+     print pkt[TCP].flags
+     if pkt[TCP].flags == 0x2 :
+         print """handle tcp syn"""
+         tcp_syn_handle(pkt)
+
+     
+     """
+     print "send ____________________________________"
      print index
      s=pkts[index]
      s[Ether].src=pkt[Ether].dst
@@ -27,6 +46,7 @@ def monitor_callback(pkt):
      sendp(s)
 
      index+=2
+     """
 
 pkts=rdpcap("test/http.pcap")  # could be used like this rdpcap("filename",500) fetches first 500 pkts
 for pkt in pkts:
@@ -38,4 +58,4 @@ for pkt in pkts:
      #pkt[IP].dst= new_dst_ip
      #sendp(pkt) #sending packet at layer 2
 
-sniff(prn=lambda x : monitor_callback(x), filter="dst port 3080 and dst host 192.168.56.102", iface="vboxnet0", store=0)
+sniff(prn=lambda x : monitor_callback(x), filter="dst port 3080 and dst host 127.0.0.1", iface="lo", store=0)
