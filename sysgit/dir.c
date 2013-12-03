@@ -3,7 +3,16 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
 
+int 
+append_str(char *dst, char *src)
+{
+    int len = strlen(src);
+    memcpy(dst, src, len);
+    dst[len] = '\0';
+    return len;
+}
 
 int is_dot_or_dotdot(const char* name)
 {
@@ -12,10 +21,24 @@ int is_dot_or_dotdot(const char* name)
                  (name[1] == '.' && name[2] == '\0')));
 }
 
-
+/*
+ * determin the file type
+ * only file, directory and symbolic link is handled.
+ * no plan to support other types.
+ */
+char file_type(const mode_t st_mode)
+{
+    if(S_ISREG(st_mode))
+        return 'f';
+    if(S_ISDIR(st_mode))
+        return 'd';
+    if(S_ISLNK(st_mode))
+        return 'l';
+    return '-';
+}
 
 int
-browse_dir(const char* path)
+browse_dir(char* path, int len)
 {
     DIR *dp;
     struct dirent *ep;
@@ -28,12 +51,22 @@ browse_dir(const char* path)
             if(!is_dot_or_dotdot(ep->d_name))
             {
                 struct stat sb;
-                puts (ep->d_name);
-                if (lstat(ep->d_name, &sb) == 0)
+                int child_len = len;
+                child_len += append_str(path+len, "/");
+                child_len += append_str(path+child_len, ep->d_name);
+                if (lstat(path, &sb) == 0)
                 {
-                    putchar(sb.st_mode);
-                    putchar(' ');
-                    puts (ep->d_name);
+                    printf ("%c %d %d%d%d %d:%d %s\n", 
+				/* file type */
+                                file_type(sb.st_mode),
+				/* file mode */
+				(S_IRWXU|S_IRWXG|S_IRWXO) & sb.st_mode, 
+				/* human readable file mode */
+				(sb.st_mode & S_IRWXU) >> 6, (sb.st_mode & S_IRWXG) >> 3, sb.st_mode & S_IRWXO, 
+				/* uid and gid */
+				sb.st_uid, sb.st_gid, path);
+                    if(S_ISDIR(sb.st_mode))
+                         browse_dir(path, child_len);
                 }
             }
         }
@@ -45,9 +78,13 @@ browse_dir(const char* path)
     return 0;
 }
 
+
 int
 main (int argc, char**argv)
 {
-    printf("name max = %d", NAME_MAX);
-    return browse_dir(argv[1]);
+    char path[10240];
+    int len = 0;
+    //printf("name max = %d\n", NAME_MAX);
+    len += append_str(path, argv[1]);
+    return browse_dir(path, len);
 }
