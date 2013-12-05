@@ -21,6 +21,15 @@ int is_dot_or_dotdot(const char* name)
                  (name[1] == '.' && name[2] == '\0')));
 }
 
+int is_dot_git(const char* name)
+{
+    return name[0] == '.' &&
+           name[1] == 'g' &&
+           name[2] == 'i' &&
+           name[3] == 't' &&
+           name[4] == '\0';
+}
+
 /*
  * determin the file type
  * only file, directory and symbolic link is handled.
@@ -37,23 +46,35 @@ char file_type(const mode_t st_mode)
     return '-';
 }
 
+
+int 
+is_ignored(const char *path)
+{
+    return 0;
+}
+
 int
 browse_dir(char* path, int len)
 {
     DIR *dp;
     struct dirent *ep;
 
+    if(is_ignored(path))
+        return 0;
+
     dp = opendir (path);
     if (dp != NULL)
     {
+	if(path[len] != '/')
+	    len += append_str(path+len, "/");
+
         while (ep = readdir (dp))
         {
-            if(!is_dot_or_dotdot(ep->d_name))
+            //puts(ep->d_name);
+            if(!is_dot_or_dotdot(ep->d_name) && !is_dot_git(ep->d_name))
             {
                 struct stat sb;
                 int child_len = len;
-                if(path[len] != '/')
-		    child_len += append_str(path+len, "/");
                 child_len += append_str(path+child_len, ep->d_name);
 
                 if (lstat(path, &sb) == 0)
@@ -69,6 +90,10 @@ browse_dir(char* path, int len)
 				sb.st_uid, sb.st_gid, path);
                     if(S_ISDIR(sb.st_mode))
                          browse_dir(path, child_len);
+                }
+                else
+                {
+                    //printf("Failed to stat %s", path);
                 }
             }
         }
@@ -86,7 +111,6 @@ main (int argc, char**argv)
 {
     char path[10240];
     int len = 0;
-    //printf("name max = %d\n", NAME_MAX);
     len += append_str(path, argv[1]);
     return browse_dir(path, len);
 }

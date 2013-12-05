@@ -2,10 +2,10 @@
 
 prepare_test_env()
 {
-    rm -fr test_dir
-
-    mkdir test_dir
-    cd test_dir
+    rm -fr drill_dir
+    mkdir -p drill_dir/src
+    mkdir -p drill_dir/dst
+    cd drill_dir/src
 
     echo "bar/" > .gitignore
 
