@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <string.h>
 
+
+int path_root_len = 0;
+
 int 
 append_str(char *dst, char *src)
 {
@@ -93,7 +96,7 @@ browse_dir(char* path, int len)
                          /* human readable file mode */
                          (sb.st_mode & S_IRWXU) >> 6, (sb.st_mode & S_IRWXG) >> 3, sb.st_mode & S_IRWXO, 
                          /* uid and gid */
-                         sb.st_uid, sb.st_gid, path);
+                         sb.st_uid, sb.st_gid, path + path_root_len);
                 if(S_ISDIR(sb.st_mode))
                      browse_dir(path, child_len);
             }
@@ -113,7 +116,9 @@ int
 main (int argc, char**argv)
 {
     char path[10240];
-    int len = 0;
-    len += append_str(path, argv[1]);
+    int len = append_str(path, argv[1]);
+    if(path[len-1] != '/')
+        len += append_str(path+len, "/");
+    path_root_len = len;
     return browse_dir(path, len);
 }

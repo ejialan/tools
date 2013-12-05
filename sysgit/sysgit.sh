@@ -6,7 +6,7 @@ log()
     echo `date '+[%Y-%m-%d %H:%M:%S] '` $1 $2 $3 $4 $5
 }
 
-precheck()
+pre_check()
 {
   #git config --global user.email "you@example.com"
   #git config --global user.name "Your Name"
@@ -21,7 +21,14 @@ precheck()
   fi
 }
 
-generategitignore()
+
+prepare_env()
+{
+  gcc dir.c
+  prepare_gitignore
+}
+
+prepare_gitignore()
 {
   if [ -f "${src}/.gitignore" ];then
     log ".gitignore already existed in ${src}. Reuse it."
@@ -38,11 +45,11 @@ init_repo()
     git commit -m 'init commit'
 }
 
-backup_folder_ownership()
+backup_ownership_and_mode()
 {
-    log "backup_folder_ownership"
+    log "backup_ownership_and_mode"
     # git will take care symbol links
-    find . -type d 2>/dev/null | grep -v '.git' > /tmp/folder.list
+    ./a.out  > /tmp/folder.list
     while read line
     do
         egrep -v "$line" /tmp/folder.list > /tmp/folder.list.tmp
@@ -107,7 +114,8 @@ restore_folder_ownership()
 src=${2:-/}
 dst=${3:-/}
 
-generategitignore
+pre_check
+prepare_env
 
 cd "${src}"
 
