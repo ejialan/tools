@@ -52,8 +52,10 @@ browse_dir(char* path, int len)
             {
                 struct stat sb;
                 int child_len = len;
-                child_len += append_str(path+len, "/");
+                if(path[len] != '/')
+		    child_len += append_str(path+len, "/");
                 child_len += append_str(path+child_len, ep->d_name);
+
                 if (lstat(path, &sb) == 0)
                 {
                     printf ("%c %d %d%d%d %d:%d %s\n", 
