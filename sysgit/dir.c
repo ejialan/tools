@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -56,51 +57,53 @@ is_ignored(const char *path)
 int
 browse_dir(char* path, int len)
 {
-    DIR *dp;
-    struct dirent *ep;
+    struct dirent **ep;
+    int entries;
+    int i;
 
     if(is_ignored(path))
         return 0;
 
-    dp = opendir (path);
-    if (dp != NULL)
+    if(path[len-1] != '/')
+        len += append_str(path+len, "/");
+
+    entries = scandir(path, &ep, 0, alphasort);
+    if(entries < 0)
     {
-	if(path[len] != '/')
-	    len += append_str(path+len, "/");
+        perror("Failed to scan directory");
+        return -1;
+    }
 
-        while (ep = readdir (dp))
+    for(i=0; i<entries; i++)
+    {
+        //puts(ep[i]->d_name);
+        if(!is_dot_or_dotdot(ep[i]->d_name) && !is_dot_git(ep[i]->d_name))
         {
-            //puts(ep->d_name);
-            if(!is_dot_or_dotdot(ep->d_name) && !is_dot_git(ep->d_name))
-            {
-                struct stat sb;
-                int child_len = len;
-                child_len += append_str(path+child_len, ep->d_name);
+            struct stat sb;
+            int child_len = len;
+            child_len += append_str(path+child_len, ep[i]->d_name);
 
-                if (lstat(path, &sb) == 0)
-                {
-                    printf ("%c %d %d%d%d %d:%d %s\n", 
-				/* file type */
-                                file_type(sb.st_mode),
-				/* file mode */
-				(S_IRWXU|S_IRWXG|S_IRWXO) & sb.st_mode, 
-				/* human readable file mode */
-				(sb.st_mode & S_IRWXU) >> 6, (sb.st_mode & S_IRWXG) >> 3, sb.st_mode & S_IRWXO, 
-				/* uid and gid */
-				sb.st_uid, sb.st_gid, path);
-                    if(S_ISDIR(sb.st_mode))
-                         browse_dir(path, child_len);
-                }
-                else
-                {
-                    //printf("Failed to stat %s", path);
-                }
+            if (lstat(path, &sb) == 0)
+            {
+                printf ("%c %d %d%d%d %d:%d %s\n", 
+                         /* file type */
+                         file_type(sb.st_mode),
+                         /* file mode */
+                         (S_IRWXU|S_IRWXG|S_IRWXO) & sb.st_mode, 
+                         /* human readable file mode */
+                         (sb.st_mode & S_IRWXU) >> 6, (sb.st_mode & S_IRWXG) >> 3, sb.st_mode & S_IRWXO, 
+                         /* uid and gid */
+                         sb.st_uid, sb.st_gid, path);
+                if(S_ISDIR(sb.st_mode))
+                     browse_dir(path, child_len);
+            }
+            else
+            {
+                //perror("Failed to stat file");
             }
         }
-       (void) closedir (dp);
     }
-    else
-       perror ("Couldn't open the directory");
+    free(ep);
 
     return 0;
 }
