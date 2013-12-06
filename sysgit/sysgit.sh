@@ -24,7 +24,7 @@ pre_check()
 
 prepare_env()
 {
-  gcc dir.c
+  gcc -o /tmp/stat_dir dir.c
   prepare_gitignore
 }
 
@@ -45,17 +45,16 @@ init_repo()
     git commit -m 'init commit'
 }
 
+generate_ignore_list()
+{
+  git status --ignored | sed -n -e '/Ignored files:/,$ p' | sed -e '1,3d' | sed -e 's/^#[[:space:]]//' > ignore.list
+}
+
 backup_ownership_and_mode()
 {
     log "backup_ownership_and_mode"
     # git will take care symbol links
-    ./a.out  > /tmp/folder.list
-    while read line
-    do
-        egrep -v "$line" /tmp/folder.list > /tmp/folder.list.tmp
-        mv /tmp/folder.list.tmp /tmp/folder.list
-    done < ./.gitignore
-    cat /tmp/folder.list | xargs -I {} stat -c '%a %u:%g %n' {} > ./folder.list
+    /tmp/stat_dir "." ignore.list `cat ignore.list | wc -l` > stat.list
 }
 
 backup_file_ownership()
@@ -77,7 +76,7 @@ commit_repo()
 reset_repo()
 {
     # this operation is really dangerous
-    #git clean -f -d
+    git clean -f
     git reset --hard HEAD
 }
 
@@ -122,8 +121,8 @@ cd "${src}"
 if [ "x$1" = "xbackup" ]; then
    log "Start to backup system."
    init_repo
-   backup_folder_ownership
-   backup_file_ownership
+   generate_ignore_list
+   backup_ownership_and_mode
    commit_repo
    log "Finsh to backup system."
 elif [ "x$1" = "xrestore" ]; then

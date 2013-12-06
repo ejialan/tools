@@ -6,8 +6,16 @@
 #include <unistd.h>
 #include <string.h>
 
+struct ign_file
+{
+  char* buf;
+  int len;
+  int is_dir;
+};
 
 int path_root_len = 0;
+struct ign_file* ign_files;
+int nr_ign_files = 0;
 
 int 
 append_str(char *dst, char *src)
@@ -54,7 +62,52 @@ char file_type(const mode_t st_mode)
 int 
 is_ignored(const char *path)
 {
-    return 0;
+  int i = 0;
+  int len = strlen(path);
+
+  for(i=0; i<nr_ign_files; i++)
+  {
+      if(len == ign_files[i].len
+          && strcmp(path, ign_files[i].buf) == 0 )
+        return 1;
+  }
+
+  return 0;
+}
+
+void load_ignore_list(const char* path, int linenr)
+{
+  char *line = NULL;
+  size_t linecap = 0;
+  ssize_t linelen;
+  int i = 0;
+
+  FILE *fp = fopen(path, "r");
+  if(!fp)
+  {
+    perror("failed to open file");
+    exit(1);
+  }
+
+  ign_files = (struct ign_file*)calloc(linenr, sizeof(struct ign_file));
+  nr_ign_files = linenr;
+
+  while ((linelen = getline(&line, &linecap, fp)) > 0)
+  {
+    if(line[linelen-1] == '\n')
+    {
+      line[linelen-1] = '\0';
+      linelen--;
+    }
+
+    ign_files[i].buf = line; 
+    ign_files[i].len = linelen; 
+    ign_files[i].is_dir = line[linelen-1] == '/' ? 1 : 0;
+
+    line = NULL;
+    linecap = 0;
+    i++;
+  }
 }
 
 int
@@ -63,9 +116,6 @@ browse_dir(char* path, int len)
     struct dirent **ep;
     int entries;
     int i;
-
-    if(is_ignored(path))
-        return 0;
 
     if(path[len-1] != '/')
         len += append_str(path+len, "/");
@@ -88,7 +138,15 @@ browse_dir(char* path, int len)
 
             if (lstat(path, &sb) == 0)
             {
-                printf ("%c %d %d%d%d %d:%d %s\n", 
+              if(file_type(sb.st_mode) == 'd')
+              {
+                child_len += append_str(path+child_len, "/");
+              }
+
+              if(is_ignored(path + path_root_len))
+                continue;
+
+              printf ("%c %d %d%d%d %d:%d %s\n", 
                          /* file type */
                          file_type(sb.st_mode),
                          /* file mode */
@@ -97,12 +155,12 @@ browse_dir(char* path, int len)
                          (sb.st_mode & S_IRWXU) >> 6, (sb.st_mode & S_IRWXG) >> 3, sb.st_mode & S_IRWXO, 
                          /* uid and gid */
                          sb.st_uid, sb.st_gid, path + path_root_len);
-                if(S_ISDIR(sb.st_mode))
-                     browse_dir(path, child_len);
+              if(S_ISDIR(sb.st_mode))
+                 browse_dir(path, child_len);
             }
             else
             {
-                //perror("Failed to stat file");
+              //perror("Failed to stat file");
             }
         }
     }
@@ -120,5 +178,6 @@ main (int argc, char**argv)
     if(path[len-1] != '/')
         len += append_str(path+len, "/");
     path_root_len = len;
+    load_ignore_list(argv[2], atoi(argv[3]));
     return browse_dir(path, len);
 }
