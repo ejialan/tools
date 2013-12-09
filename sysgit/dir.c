@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include <libgen.h>
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -215,20 +216,100 @@ browse_dir(struct path_buf *path)
     return 0;
 }
 
-int 
-tranversal_dir ( const char* path, int argc, const char **argv)
+int
+init_path(struct path_buf *path, const char *init)
 {
+  _append_str(path, init);
+  append_path_seperator(path);
+  path->prefix_len = path->len;
+  return path->len;
+}
+
+int 
+traversal_dir (int argc, const char **argv)
+{
+  struct path_buf path = {
+    NULL, 0, 0, 0
+  };
+  init_path(&path, argv[1]);
+  load_ignore_list(argv[2], atoi(argv[3]));
+  return browse_dir(&path);
+}
+
+const char*
+strnchr(const char* str, int c, int n)
+{
+  int i, matches = 0;
+  for (i = 0; str[i] != '\0'; i++)
+  {
+    if(str[i] == c && ++matches == n)
+      return str + i + 1;
+  }
+}
+
+int 
+restore_dir (int argc, const char **argv)
+{
+  struct path_buf path = {
+    NULL, 0, 0, 0
+  };
+  char *line = NULL;
+  size_t linecap = 0;
+  ssize_t linelen;
+  int i = 0;
+
+  int prefix_len = init_path(&path, argv[1]);
+
+  FILE *fp = fopen(argv[2], "r");
+  if(!fp)
+  {
+    perror("failed to open file");
+    exit(1);
+  }
+
+  while ((linelen = getline(&line, &linecap, fp)) > 0)
+  {
+    struct stat sb;
+
+    if(line[linelen-1] == '\n')
+    {
+      line[linelen-1] = '\0';
+      linelen--;
+    }
+    printf("%s\n", line);
+    _append_str(&path, strnchr(line, ' ', 4));
+    printf("obsulote path : %s\n", path.buf);
+    if (lstat(path.buf, &sb) == 0)
+    {
+      char buf[64];
+      sprintf (buf, "%c %d %d%d%d %d:%d",
+               /* file type */
+               file_type(sb.st_mode),
+               /* file mode */
+               (S_IRWXU|S_IRWXG|S_IRWXO) & sb.st_mode,
+               /* human readable file mode */
+               (sb.st_mode & S_IRWXU) >> 6, (sb.st_mode & S_IRWXG) >> 3, sb.st_mode & S_IRWXO,
+               /* uid and gid */
+               sb.st_uid, sb.st_gid);
+      printf("%s\n", buf);
+      if(strncmp(buf, line, strlen(buf)) != 0)
+      {
+        printf(" change to %s\n", buf);
+      }
+
+    }
+    else
+    {
+    }
+
+    reset_path(&path, prefix_len);
+  }
+
   return 0;
 }
 
 int 
-restore_dir ( const char* path, int argc, const char **argv)
-{
-  return 0;
-}
-
-int 
-clean_dir ( const char* path, int argc, const char **argv)
+clean_dir (int argc, const char **argv)
 {
   return 0;
 }
@@ -236,11 +317,11 @@ clean_dir ( const char* path, int argc, const char **argv)
 struct cmd_struct
 {
   const char* cmd;
-  int (*fn)(const char*, int, const char**);
+  int (*fn)(int, const char**);
 };
 
 struct cmd_struct commands[] = {
-  {"tranversal", tranversal_dir},
+  {"traversal", traversal_dir},
   {"restore", restore_dir},
   {"clean", clean_dir}
 };
@@ -248,13 +329,13 @@ struct cmd_struct commands[] = {
 int
 main (int argc, char**argv)
 {
-  struct path_buf path = {
-    NULL, 0, 0, 0
-  };
-  _append_str(&path, argv[1]);
-  append_path_seperator(&path);
-  path.prefix_len = path.len;
+  int i;
+  char *cmd = basename(argv[0]);
 
-  load_ignore_list(argv[2], atoi(argv[3]));
-  return browse_dir(&path);
+  for (i = 0; i < 3; i++)
+  {
+    if(strcmp(commands[i].cmd, cmd) == 0)
+      return commands[i].fn(argc, (const char**)argv);
+  }
+  return -1;
 }
