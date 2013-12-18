@@ -24,7 +24,9 @@ pre_check()
 
 prepare_env()
 {
-  gcc -o /tmp/stat_dir dir.c
+  gcc -o /tmp/traversal dir.c
+  gcc -o /tmp/restore dir.c
+  gcc -o /tmp/clean dir.c
   prepare_gitignore
 }
 
@@ -54,14 +56,7 @@ backup_ownership_and_mode()
 {
     log "backup_ownership_and_mode"
     # git will take care symbol links
-    /tmp/stat_dir "." ignore.list `cat ignore.list | wc -l` > stat.list
-}
-
-backup_file_ownership()
-{
-    log "backup_file_ownership"
-    #stat -c '%a %U:%G %n'
-    git ls-tree -r --name-only HEAD | xargs -I {} stat -c '%u:%g %n' {} | awk '{if ($1 != "0:0") print $0 }' > ./stat.list
+    /tmp/traversal "." ignore.list `cat ignore.list | wc -l` > stat.list
 }
 
 commit_repo()

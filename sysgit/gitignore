@@ -1,13 +1,17 @@
-*/log/*
-*/logs/*
+
+g/
+logs/
 *.log
 /var/tmp/
-/var/sog/data/cache
-/tmp
-/dev
-/var/sog/backups
-/opt/app/oracle
-/proc
-/sys
-/lost+found
+/var/run/
+/var/sog/data/cache/
+/tmp/
+/dev/
+/var/sog/backups/
+/proc/
+/sys/
+/lost+found/
+/var/lib/ntp/proc/
+/var/lib/nfs/rpc_pipefs
+/sys/kernel/debug
 
