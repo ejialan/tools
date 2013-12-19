@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <libgen.h>
+#include <unistd.h>
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -247,6 +248,63 @@ strnchr(const char* str, int c, int n)
   }
 }
 
+//example of a line:
+//d 493 755 502:20 dir/
+mode_t
+load_mode(const char* line)
+{
+  char buf[16];
+  const char* bgn;
+  size_t len;
+  bgn = strnchr(line, ' ', 1);
+  len = strnchr(bgn, ' ', 1) - bgn - 1;
+  memcpy(buf, bgn, len); 
+  buf[len] = '\0';
+  return atoi(buf);
+}
+
+uid_t
+load_uid(const char* line)
+{
+  char buf[16];
+  const char* bgn;
+  size_t len;
+  bgn = strnchr(line, ' ', 3);
+  len = strnchr(bgn, ':', 1) - bgn - 1;
+  memcpy(buf, bgn, len); 
+  buf[len] = '\0';
+  return atoi(buf);
+}
+
+gid_t
+load_gid(const char* line)
+{
+  char buf[16];
+  const char* bgn;
+  size_t len;
+  bgn = strnchr(line, ':', 1);
+  len = strnchr(bgn, ' ', 1) - bgn - 1;
+  memcpy(buf, bgn, len); 
+  buf[len] = '\0';
+  return atoi(buf);
+}
+
+void 
+restore_mode_and_owner(const char* path, const char* line)
+{
+        mode_t mode;
+        uid_t uid;
+        gid_t gid;
+        mode = load_mode(line);
+        printf(" restore mode to %d\n", mode);
+        chmod(path, mode);
+
+        uid = load_uid(line);
+        gid = load_gid(line);
+        printf(" restore owner to %d:%d\n", uid, gid);
+        chown(path, uid, gid);
+}
+
 int 
 restore_dir (int argc, const char **argv)
 {
@@ -295,11 +353,17 @@ restore_dir (int argc, const char **argv)
       if(strncmp(buf, line, strlen(buf)) != 0)
       {
         printf(" change to %s\n", buf);
+        restore_mode_and_owner(path.buf, line);
       }
-
     }
     else
     {
+      if(line[0] == 'd')
+      {
+        printf(" deleted");
+        mkdir(path.buf, 0777);
+        restore_mode_and_owner(path.buf, line);
+      }
     }
 
     reset_path(&path, prefix_len);
