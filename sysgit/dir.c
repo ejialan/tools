@@ -156,8 +156,22 @@ void load_ignore_list(const char* path, int linenr)
   }
 }
 
+void 
+print_stat(const struct path_buf *path, const struct stat *sb)
+{
+              printf ("%c %d %d%d%d %d:%d %s\n", 
+                         /* file type */
+                         file_type(sb->st_mode),
+                         /* file mode */
+                         (S_IRWXU|S_IRWXG|S_IRWXO) & sb->st_mode, 
+                         /* human readable file mode */
+                         (sb->st_mode & S_IRWXU) >> 6, (sb->st_mode & S_IRWXG) >> 3, sb->st_mode & S_IRWXO, 
+                         /* uid and gid */
+                         sb->st_uid, sb->st_gid, path->buf + path->prefix_len);
+}
+
 int
-browse_dir(struct path_buf *path)
+browse_dir(struct path_buf *path, void (*fn)(const struct path_buf*, const struct stat*))
 {
     struct dirent **ep;
     int entries;
@@ -194,17 +208,10 @@ browse_dir(struct path_buf *path)
               if(is_ignored(path->buf + path->prefix_len))
                 continue;
 
-              printf ("%c %d %d%d%d %d:%d %s\n", 
-                         /* file type */
-                         file_type(sb.st_mode),
-                         /* file mode */
-                         (S_IRWXU|S_IRWXG|S_IRWXO) & sb.st_mode, 
-                         /* human readable file mode */
-                         (sb.st_mode & S_IRWXU) >> 6, (sb.st_mode & S_IRWXG) >> 3, sb.st_mode & S_IRWXO, 
-                         /* uid and gid */
-                         sb.st_uid, sb.st_gid, path->buf + path->prefix_len);
+              fn(path, &sb);
+
               if(S_ISDIR(sb.st_mode))
-                 browse_dir(path);
+                 browse_dir(path, fn);
             }
             else
             {
@@ -234,7 +241,7 @@ traversal_dir (int argc, const char **argv)
   };
   init_path(&path, argv[1]);
   load_ignore_list(argv[2], atoi(argv[3]));
-  return browse_dir(&path);
+  return browse_dir(&path, print_stat);
 }
 
 const char*
@@ -334,9 +341,9 @@ restore_dir (int argc, const char **argv)
       line[linelen-1] = '\0';
       linelen--;
     }
-    printf("%s\n", line);
+    //printf("%s\n", line);
     _append_str(&path, strnchr(line, ' ', 4));
-    printf("obsulote path : %s\n", path.buf);
+    //printf("obsulote path : %s\n", path.buf);
     if (lstat(path.buf, &sb) == 0)
     {
       char buf[64];
@@ -349,10 +356,10 @@ restore_dir (int argc, const char **argv)
                (sb.st_mode & S_IRWXU) >> 6, (sb.st_mode & S_IRWXG) >> 3, sb.st_mode & S_IRWXO,
                /* uid and gid */
                sb.st_uid, sb.st_gid);
-      printf("%s\n", buf);
+      //printf("%s\n", buf);
       if(strncmp(buf, line, strlen(buf)) != 0)
       {
-        printf(" change to %s\n", buf);
+        //printf(" change to %s\n", buf);
         restore_mode_and_owner(path.buf, line);
       }
     }
@@ -360,7 +367,7 @@ restore_dir (int argc, const char **argv)
     {
       if(line[0] == 'd')
       {
-        printf(" deleted");
+        printf("Restore dir : %s\n", path.buf);
         mkdir(path.buf, 0777);
         restore_mode_and_owner(path.buf, line);
       }
@@ -372,10 +379,22 @@ restore_dir (int argc, const char **argv)
   return 0;
 }
 
+void 
+list_dir(const struct path_buf *path, const struct stat *sb)
+{
+  if(S_ISDIR(sb->st_mode))
+    printf ("%s\n", path->buf + path->prefix_len);
+}
+
 int 
 clean_dir (int argc, const char **argv)
 {
-  return 0;
+  struct path_buf path = {
+    NULL, 0, 0, 0
+  };
+  init_path(&path, argv[1]);
+  load_ignore_list(argv[2], atoi(argv[3]));
+  return browse_dir(&path, list_dir);
 }
 
 struct cmd_struct
