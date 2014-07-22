@@ -4,6 +4,9 @@ import json
 import re
 
 
+containers = {}
+hosts = {}
+
 def handle(line):
   if "status" not in line:
     return
@@ -18,10 +21,30 @@ def handleStartEvent(event):
   print container
   ip = container['NetworkSettings']['IPAddress']
   host = container['Config']['Hostname']
-  print "host = ", host, "ip = ", ip
-  cmd = "find /var/lib/docker/containers/ -name hosts | xargs -I rep sh -c \"echo \'{0} {1}' >> rep\"".format(ip, host)
-  print cmd
-  os.system(cmd)
+  print "A contianer starts up with host = ", host, "ip = ", ip
+  containers[id] = host
+  hosts[host] = ip
+  updateAllContainer()
+
+def updateAllContainer():
+  for c,host in containers.iteritems():
+    updateOneContainer(c)
+
+def updateOneContainer(id):  
+  hosts_file = "/var/lib/docker/containers/{0}/hosts".format(id)
+  print "update", hosts_file
+  for host, ip in hosts.iteritems():
+    if containers[id] == host:
+      continue
+
+    'remove the old configuration'
+    cmd = "sed -e '/ {0}$/d' {1} > /tmp/{0}; cat /tmp/{0} > {1}".format(host, hosts_file)
+    print cmd
+    os.system(cmd)
+
+    cmd = "echo '{0} {1}' >> {2}".format(ip, host, hosts_file)
+    print cmd
+    os.system(cmd)
 
 def inspect(id):
   req = "GET /containers/{0}/json HTTP/1.1\r\n\r\n".format(id)
