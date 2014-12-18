@@ -135,6 +135,8 @@ def handle_tcp_pkt(pkt):
     elif pkt[TCP].flags & tcp_flag_vals["F"] :
         print """handle tcp fin"""
         handle_tcp_fin(pkt)
+    elif pkt[TCP].flags & tcp_flag_vals["R"] :
+        print """Ignore tcp RST"""
     else :
         handle_tcp_data(pkt)
 

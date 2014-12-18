@@ -7,6 +7,8 @@ NOTE:
 1. The tool is based on scapy, a powerful interactive packet manipulation
 program. Follow the instruction to install scapy,
 http://www.secdev.org/projects/scapy
+To be simple:
+wget http://www.secdev.org/projects/scapy/files/scapy-latest.tar.gz
 
 2. Before run this tool, you need to configure iptables as following.
 # iptables -A OUTPUT -p tcp --tcp-flags RST RST -s 150.236.225.96 -j DROP
