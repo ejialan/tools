@@ -24,7 +24,7 @@ Options:
   -w, --welcome
      Send a welcome message when a client is connected.
   -t, --protocol
-     Protocol to analysis the pcap file and recevied network packets. By default, raw protocol is applied,
+     Protocol to analysis the pcap file and received network packets. By default, raw protocol is applied,
      
 Packet matching:
   When a data packet received from client, the packet matcher will match the packet with the packets in the pcap files one by one. 
@@ -38,12 +38,32 @@ Packet matching options:
 
 Protocols:
   raw:
-     There is no transactions applied to the payload of packets.
+     Match the request and response as raw string.
+     There is no translation applied to the payload of packets.
+
   ldap:
      Match the packets as ldap protocol.
-     The message id of ldap response is adjusted according to the recevied ldap request.
+     The message id of ldap response is adjusted according to the received ldap request.
 
-Example:
+  regex:[config]:
+     Match the packets according to regular expression.
+     The response returned is adjusted according to the given regular expression.
+     The regular expression is passed in as configuration following by a ':'. The configuration is json formated: 
+       { 
+         'match' : 'request match pattern', 
+         'adjust' : [ ['request search pattern 1', 'response search pattern 1'], [...] ]
+       }
+     The request match pattern is used to match the received packet and the packets in pcap file. The pattern must contain more than one group. 
+     One received packet is matched only if:
+       1) both the received packet and one packet in pcap file match the pattern
+       2) the groups from both match are same
+     The request search pattern and response search pattern is used to adjust the returned response packet. Both patterns must contain one and only one group. The matched group of the response is replaced by the matched group of the request if both search patterns produce a match of received packet and one returned response packet.
+  
+  cai3g:
+     Match the packets according to cai3g protocol.
+     The cai3g is based on regex protcol.
+
+Examples:
    ./pcap-sim.py -p 5761 -i eth0 -a 150.236.225.96 -m server -f test/hlr_login2.pcap -f test/hlr_ordered_single.pcap,wrap -r 172.26.11.61:5000,192.168.67.43:5566 -w "hello"
 """
 
@@ -194,6 +214,10 @@ caps=[]
 matchers=[]
 
 if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        print __doc__
+        exit(0)
+
     try:
         cmdlineOptions, args= getopt.getopt(sys.argv[1:],'hp:i:a:m:f:r:w:t:',
             ["help","port","interface","address","mode","file","replace","welcome","protocol"])
@@ -222,7 +246,12 @@ if __name__ == "__main__":
         elif  optName in ("-w","--welcome"):
             welcome = optValue.decode("string_escape")
         elif  optName in ("-t","--protocol"):
-            protocol = __import__('pcap.' + optValue, fromlist=['*'])
+            if ':' in optValue:
+              [p, pconf] = optValue.split(':', 1)
+              protocol = __import__('pcap.' + p, fromlist=['*'])
+              protocol.config(pconf)
+            else:
+              protocol = __import__('pcap.' + optValue, fromlist=['*'])
             
     if 'protocol' not in locals():
       protocol = __import__('pcap.raw', fromlist=['*'])

@@ -5,11 +5,7 @@ from scapy.all import *
 from scapy.utils import rdpcap
 from pcap.matcher import *
 
-protocol = __import__('pcap.regex', fromlist=['*'])
-protocol.config('''{
-                 "match" : ".*\\r\\n\\r\\n.*<soapenv:Body>(.*)", 
-                 "adjust" : [["essionId>([0-9a-z]*)<", "essionId[^>]*>([0-9a-z]*)<"]]
-                }''')
+protocol = __import__('pcap.cai3g', fromlist=['*'])
 
 class TestPcapMatcher(unittest.TestCase):
   def setUp(self):
