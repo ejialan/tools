@@ -72,8 +72,8 @@ from scapy.utils import rdpcap
 import sys, getopt, os, time
 from random import randint
 import logging
-from pcap.matcher import *
-from pcap.misc import *
+from matcher.matcher import *
+from matcher.misc import *
 
 welcome=None
 
@@ -248,10 +248,10 @@ if __name__ == "__main__":
         elif  optName in ("-t","--protocol"):
             if ':' in optValue:
               [p, pconf] = optValue.split(':', 1)
-              protocol = __import__('pcap.' + p, fromlist=['*'])
+              protocol = __import__('matcher.' + p, fromlist=['*'])
               protocol.config(pconf)
             else:
-              protocol = __import__('pcap.' + optValue, fromlist=['*'])
+              protocol = __import__('matcher.' + optValue, fromlist=['*'])
             
     if 'protocol' not in locals():
       protocol = __import__('pcap.raw', fromlist=['*'])
