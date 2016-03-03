@@ -55,7 +55,7 @@ def handle_tcp_data(pkt):
   #print """handle_tcp_data """ 
   #if has_load(pkt): print repr(pkt.load)
   link = get_link_name(pkt)
-  conns[link] = {'time':int(time.time()*1000), 'pkt':pkt, 'conn':link}
+  conns[link] = {'time':int(time.time()*1000), 'pkt':pkt, 'conn':link, 'counted':False }
    
 def monitor_callback(pkt):
   #print """receive ____________________________________"""
@@ -72,8 +72,13 @@ def scan_conns():
     time.sleep(0.5)
     now  = int(time.time()*1000)
     for conn in conns.keys():
-      if now - conns[conn]['time'] > conf['timeout']:
-        print conns[conn]
+      if now - conns[conn]['time'] > conf['timeout'] \
+           and conns[conn]['counted'] == False \
+           and hasattr(conns[conn]['pkt'], 'load') \
+           and conns[conn]['pkt'][IP].dst == conf['address']:
+        print conns[conn], now - conns[conn]['time']
+        conns[conn]['counted'] = True
+
 
 def main():
   parse_opts()
