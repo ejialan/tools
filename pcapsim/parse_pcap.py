@@ -18,7 +18,7 @@ def parse_opts():
     exit(0)
 
   try:
-    cmdlineOptions, args= getopt.getopt(sys.argv[1:],'hp:i:a:t:',
+    cmdlineOptions, args= getopt.getopt(sys.argv[1:],'hp:i:a:t:f:',
           ["help","port","interface","address"])
   except getopt.GetoptError, e:
     sys.exit("Error in a command-line option:\n\t" + str(e))
@@ -36,6 +36,8 @@ def parse_opts():
       conf['address'] = address
     elif  optName in ("-t","--timeout"):
       conf['timeout'] = int(optValue) 
+    elif  optName in ("-f","--file"):
+      conf['file'] = optValue 
 
 def get_link_name(pkt):
   return (pkt[IP].dst + '_' + str(pkt[TCP].dport)) if (conf['port'] == pkt[TCP].sport and conf['address'] == pkt[IP].src ) else (pkt[IP].src + '_' + str(pkt[TCP].sport))
@@ -63,16 +65,12 @@ def handle_tcp_data(cur_pkt):
 
   if hasattr(pre_pkt, 'load') \
         and pre_pkt[IP].dst == conf['address'] \
-        and (cur_pkt.time - pre_pkt.time)*1000 > conf['timeout']:
-    print (cur_pkt.time - pre_pkt.time)*1000, pre_pkt
+	and (cur_pkt.time - pre_pkt.time)*1000 > conf['timeout']:
+    print (cur_pkt.time - pre_pkt.time)*1000, pre_pkt 
 
   conns[link] = {'pkt':cur_pkt, 'conn':link}
-
    
-def monitor_callback(pkt):
-  #print """receive ____________________________________"""
-  #pkt.show()
-  #print pkt[TCP].flags
+def parse_pkt(pkt):
   if TCP in pkt:
     handle_tcp_pkt(pkt)
   else :
@@ -94,10 +92,9 @@ def scan_conns():
 
 def main():
   parse_opts()
-
-  print "monitor port %d and host %s on %s" % (conf['port'], conf['address'], conf['interface'])
-  #sniff(prn=lambda x : monitor_callback(x), filter="port %d" % (port), iface=interface, store=0)
-  sniff(prn=lambda x : monitor_callback(x), filter="port %d and host %s" % (conf['port'], conf['address']), iface=conf['interface'], store=0)
+  pl = rdpcap(conf['file'])
+  for pkt in pl:
+    parse_pkt(pkt)
 
 if __name__ == "__main__":
   main()
