@@ -77,19 +77,6 @@ def parse_pkt(pkt):
     print """Unsupported packet!!!!!!!!!!!!!"""
     pkt.show()
 
-def scan_conns():
-  while True:
-    time.sleep(0.5)
-    now  = int(time.time()*1000)
-    for conn in conns.keys():
-      if now - conns[conn]['time'] > conf['timeout'] \
-           and conns[conn]['counted'] == False \
-           and hasattr(conns[conn]['pkt'], 'load') \
-           and conns[conn]['pkt'][IP].dst == conf['address']:
-        print conns[conn], now - conns[conn]['time']
-        conns[conn]['counted'] = True
-
-
 def main():
   parse_opts()
   pl = rdpcap(conf['file'])
