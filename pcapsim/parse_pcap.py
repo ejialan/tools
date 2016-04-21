@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 from scapy.all import *
 from scapy.utils import rdpcap
 import sys, getopt, os, time, thread
@@ -11,6 +10,7 @@ tcp_flag_vals = {"F":0x1, "S":0x2, "R":0x4, "P":0x8,
                  "A":0x10, "U":0x20, "E":0x40, "C":0x80 }
 conf={}
 conns = {}
+rt = {}
 
 def parse_opts():
   if len(sys.argv) == 1:
@@ -18,8 +18,8 @@ def parse_opts():
     exit(0)
 
   try:
-    cmdlineOptions, args= getopt.getopt(sys.argv[1:],'hp:i:a:t:f:',
-          ["help","port","interface","address"])
+    cmdlineOptions, args= getopt.getopt(sys.argv[1:],'hp:a:t:f:',
+          ["help","port","address"])
   except getopt.GetoptError, e:
     sys.exit("Error in a command-line option:\n\t" + str(e))
   for (optName,optValue) in cmdlineOptions:
@@ -28,9 +28,6 @@ def parse_opts():
       exit(0)
     elif  optName in ("-p","--port"):
       conf['port'] = int(optValue)
-    elif  optName in ("-i","--interface"):
-      interface = optValue
-      conf['interface'] = interface
     elif  optName in ("-a","--address"):
       address = optValue
       conf['address'] = address
@@ -49,7 +46,7 @@ def handle_tcp_pkt(pkt):
       handle_tcp_data(pkt)
 
 def handle_tcp_fin(pkt):
-  print "handle tcp fin from " + get_link_name(pkt)
+  #print "handle tcp fin from " + get_link_name(pkt)
   if get_link_name(pkt) in conns:
     del(conns[get_link_name(pkt)])
 
@@ -59,16 +56,20 @@ def handle_tcp_data(cur_pkt):
   link = get_link_name(cur_pkt)
   if link not in conns:
     conns[link] = {'pkt':cur_pkt, 'conn':link}
+    rt[link] = []
     return
 
   pre_pkt = conns[link]['pkt']
+  conns[link] = {'pkt':cur_pkt, 'conn':link}
 
   if hasattr(pre_pkt, 'load') \
-        and pre_pkt[IP].dst == conf['address'] \
-	and (cur_pkt.time - pre_pkt.time)*1000 > conf['timeout']:
-    print (cur_pkt.time - pre_pkt.time)*1000, pre_pkt 
+        and pre_pkt[IP].dst == conf['address']: 
+    t = (cur_pkt.time - pre_pkt.time)*1000
+    rt[link].append(float(format(t, '.2f')))
 
-  conns[link] = {'pkt':cur_pkt, 'conn':link}
+    if t > conf['timeout']:
+      print t, pre_pkt 
+
    
 def parse_pkt(pkt):
   if TCP in pkt:
@@ -79,9 +80,14 @@ def parse_pkt(pkt):
 
 def main():
   parse_opts()
-  pl = rdpcap(conf['file'])
-  for pkt in pl:
-    parse_pkt(pkt)
+  reader = PcapReader(conf['file'])
+  p = reader.read_packet()
+  while p is not None:
+    parse_pkt(p)
+    p = reader.read_packet()
+
+  for r in rt:
+    print r, rt[r]
 
 if __name__ == "__main__":
   main()
