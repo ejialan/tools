@@ -89,5 +89,10 @@ def main():
   for r in rt:
     print r, rt[r]
 
+  for r in rt:
+    print r, len(rt[r])
+
 if __name__ == "__main__":
   main()
+  
+
