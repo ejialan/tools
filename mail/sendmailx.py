@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Settings
 
 '''
 send or cancel meeting requst by batch
@@ -32,10 +31,8 @@ SMTP_PORT = 25
 SMTP_USERNAME = ''
 SMTP_PASSWORD = ''
 SEED=''
-
-MESSAGE = """This is the message
-to be sent to the client.
-"""
+METHOD='REQUEST'
+batchfile=''
 
 # Now construct the message
 import smtplib, email
@@ -47,12 +44,8 @@ import icalendar
 import pytz
 import hashlib
 
-
-SMTP_PASSWORD = getpass.getpass()
-
-METHOD='REQUEST'
-
 def uid(str):
+  print 'seed=', SEED
   return int(hashlib.sha1(str+SEED).hexdigest(), 16) % (10 ** 10)
 
 #def sendmail(name, toList, start, end, uid):
@@ -84,7 +77,6 @@ def sendmail(organizer,location,starttime,endtime,to,attendees,subject,method):
         event.add('priority', 5)
         event.add('sequence', 1)
         event.add('created', datetime.now())
-	#print event
 
         alarm = icalendar.Alarm()
         alarm.add("action", "DISPLAY")
@@ -104,7 +96,6 @@ def sendmail(organizer,location,starttime,endtime,to,attendees,subject,method):
         part.add_header("Filename", filename)
         part.add_header("Path", filename)
         msg.attach(part)
-	#'''
 
 	msg.add_header('X-Priority', '1')
 	msg.add_header('From', SMTP_USERNAME)
@@ -136,12 +127,9 @@ def batchsend(file,method):
     [organizer,location,subject,starttime,endtime,to,attendees]=line.split(",", 7)
     attendees = attendees.split(";")
     sendmail(organizer,location,starttime,endtime,to, attendees,subject,method)
-    
-if __name__ == "__main__":
-  if len(sys.argv) == 1:
-    print __doc__
-    exit(0)
 
+def parseOpt():
+  global SEED,batchfile,METHOD,SMTP_SERVER,SMTP_USERNAME,SMTP_PORT
   try:
     cmdlineOptions, args= getopt.getopt(sys.argv[1:],'hds:p:o:b:u:e:',
       ["help","delete","server", "port","options","batch","user","seed"])
@@ -163,6 +151,7 @@ if __name__ == "__main__":
       SMTP_PORT=v
     elif n in ("-b", "--batch"):
       batchfile=v
+      print 'batchfile=', batchfile
     elif n in ("-o", "--options"):
       with open(v, 'r') as stream:
           data=load(stream)
@@ -170,6 +159,15 @@ if __name__ == "__main__":
           print data
           globals().update(data)
 
+    
+if __name__ == "__main__":
+  if len(sys.argv) == 1:
+    print __doc__
+    exit(0)
+  
+  parseOpt() 
+  SMTP_PASSWORD = getpass.getpass()
+  print batchfile
   batchsend(batchfile, METHOD)
 
 
